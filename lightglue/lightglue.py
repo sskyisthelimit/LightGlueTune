@@ -366,7 +366,7 @@ class LightGlue(nn.Module):
         },
     }
 
-    def __init__(self, features="superpoint", **conf) -> None:
+    def __init__(self, ckpt, features="superpoint", **conf) -> None:
         super().__init__()
         self.conf = conf = SimpleNamespace(**{**self.default_conf, **conf})
         if features is not None:
@@ -405,18 +405,11 @@ class LightGlue(nn.Module):
             ),
         )
 
-        state_dict = None
-        if features is not None:
-            fname = f"{conf.weights}_{self.version.replace('.', '-')}.pth"
-            state_dict = torch.hub.load_state_dict_from_url(
-                self.url.format(self.version, features), file_name=fname
-            )
-            self.load_state_dict(state_dict, strict=False)
-        elif conf.weights is not None:
-            path = Path(__file__).parent
-            path = path / "weights/{}.pth".format(self.conf.weights)
-            state_dict = torch.load(str(path), map_location="cpu")
+        ckpt = Path(ckpt)
+        ckpt = torch.load(str(ckpt), map_location="cpu")
 
+        state_dict = ckpt["model"]
+        
         if state_dict:
             # rename old state dict entries
             for i in range(self.conf.n_layers):
