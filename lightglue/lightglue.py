@@ -407,7 +407,7 @@ class LightGlue(nn.Module):
 
         ckpt = Path(ckpt)
         ckpt = torch.load(str(ckpt), map_location="cpu")
-
+        print("Loading checkpoint....")
         state_dict = ckpt["model"]
         
         if state_dict:
@@ -417,6 +417,8 @@ class LightGlue(nn.Module):
                 state_dict = {k.replace(*pattern): v for k, v in state_dict.items()}
                 pattern = f"cross_attn.{i}", f"transformers.{i}.cross_attn"
                 state_dict = {k.replace(*pattern): v for k, v in state_dict.items()}
+            
+            print("Loading state dict....")
             self.load_state_dict(state_dict, strict=False)
 
         # static lengths LightGlue is compiled for (only used with torch.compile)
