@@ -141,27 +141,17 @@ class SuperPoint(Extractor):
             c5, self.conf.descriptor_dim, kernel_size=1, stride=1, padding=0
         )
 
-        model = 'SuperPointNet_gauss2'
-        params = {}
-        print("model: ", model)
-
-        def get_model(name):
-            mod = __import__('models.{}'.format(name), fromlist=[''])
-            return getattr(mod, name)
-
-        def modelLoader(model='SuperPointNet', **options):
-            net = get_model(model)
-            net = net(**options)
-            return net
-
-        self.net = modelLoader(model=model, **params)
-
-        checkpoint = torch.load(conf.ckpt_path,
-                                map_location=lambda storage, loc: storage)
-        self.net.load_state_dict(checkpoint['model_state_dict'])
-        
         if self.conf.max_num_keypoints is not None and self.conf.max_num_keypoints <= 0:
             raise ValueError("max_num_keypoints must be positive or None")
+
+        checkpoint = torch.load(conf.get("ckpt_path"),
+                                map_location=torch.device("cpu"))
+        if "model_state_dict" in checkpoint:
+            self.load_state_dict(checkpoint['model_state_dict'])
+        else:
+            self.load_state_dict(checkpoint)
+            
+        print(f"loaded model from path {conf.get('ckpt_path')}")            
 
     def forward(self, data: dict) -> dict:
         """Compute keypoints, scores, descriptors for image"""
