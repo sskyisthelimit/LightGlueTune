@@ -147,7 +147,8 @@ class SuperPoint(Extractor):
         checkpoint = torch.load(conf.get("ckpt_path"),
                                 map_location=torch.device("cpu"))
         if "model_state_dict" in checkpoint:
-            self.load_state_dict(checkpoint['model_state_dict'])
+            filtered_state_dict = {k: v for k, v in checkpoint['model_state_dict'].items() if not k.startswith("bn")}
+            self.load_state_dict(filtered_state_dict)
         else:
             self.load_state_dict(checkpoint)
             
