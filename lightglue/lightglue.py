@@ -321,8 +321,8 @@ class LightGlue(nn.Module):
         "num_heads": 4,
         "flash": True,  # enable FlashAttention if available.
         "mp": False,  # enable mixed precision
-        "depth_confidence": 0.95,  # early stopping, disable with -1
-        "width_confidence": 0.99,  # point pruning, disable with -1
+        "depth_confidence": -1,  # early stopping, disable with -1
+        "width_confidence": -1,  # point pruning, disable with -1
         "filter_threshold": 0.1,  # match threshold
         "weights": None,
     }
@@ -366,7 +366,9 @@ class LightGlue(nn.Module):
         },
     }
 
-    def __init__(self, features="superpoint", **conf) -> None:
+    def __init__(self, features="superpoint",
+                 ckpt_path=None,
+                 custom=True, **conf) -> None:
         super().__init__()
         self.conf = conf = SimpleNamespace(**{**self.default_conf, **conf})
         if features is not None:
@@ -404,18 +406,25 @@ class LightGlue(nn.Module):
                 [self.confidence_threshold(i) for i in range(self.conf.n_layers)]
             ),
         )
-
-        state_dict = None
-        if features is not None:
-            fname = f"{conf.weights}_{self.version.replace('.', '-')}.pth"
-            state_dict = torch.hub.load_state_dict_from_url(
-                self.url.format(self.version, features), file_name=fname
-            )
-            self.load_state_dict(state_dict, strict=False)
-        elif conf.weights is not None:
-            path = Path(__file__).parent
-            path = path / "weights/{}.pth".format(self.conf.weights)
-            state_dict = torch.load(str(path), map_location="cpu")
+        if ckpt_path and custom:
+            ckpt = Path(ckpt_path)
+            ckpt = torch.load(str(ckpt), map_location="cpu")
+            print("Loading checkpoint....")
+            state_dict = ckpt["model"]
+        elif ckpt_path and not custom:
+            state_dict = None
+            if features is not None:
+                fname = f"{conf.weights}_{self.version.replace('.', '-')}.pth"
+                state_dict = torch.hub.load_state_dict_from_url(
+                    self.url.format(self.version, features), file_name=fname
+                )
+                self.load_state_dict(state_dict, strict=False)
+            elif conf.weights is not None:
+                path = Path(__file__).parent
+                path = path / "weights/{}.pth".format(self.conf.weights)
+                state_dict = torch.load(str(path), map_location="cpu")
+        else:
+            raise ValueError("checkpoint path is required")
         
         if state_dict:
             # rename old state dict entries
